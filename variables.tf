@@ -338,8 +338,8 @@ variable "control_plane_k3s_additional_options" {
   default     = ""
 }
 
-variable "k3s_features" {
-  description = "Configurable k3s features that can be enabled or disabled. Each feature has an enabled flag and optional custom configuration content"
+variable "k3s_config" {
+  description = "Configurable k3s components that can be enabled or disabled. Each component has an enabled flag and optional custom configuration content"
   type = map(object({
     enabled       = bool
     custom_config = optional(string, "")
@@ -347,16 +347,16 @@ variable "k3s_features" {
   default = {}
   validation {
     condition = alltrue([
-      for feature in keys(var.k3s_features) : contains([
+      for component in keys(var.k3s_config) : contains([
         "kube-proxy",
         "helm-controller",
         "local-storage",
         "metrics-server",
         "servicelb",
         "traefik"
-      ], feature)
+      ], component)
     ])
-    error_message = "Unsupported k3s feature specified. Supported features are: kube-proxy, helm-controller, local-storage, metrics-server, servicelb, traefik"
+    error_message = "Unsupported k3s component specified. Supported components are: kube-proxy, helm-controller, local-storage, metrics-server, servicelb, traefik"
   }
 }
 

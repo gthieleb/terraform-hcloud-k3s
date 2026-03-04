@@ -87,7 +87,7 @@ What changed in the latest version? See
    4. [Persistent Volume Encryption](#persistent-volume-encryption)
    5. [Adjust Sysctl Parameters](#adjust-sysctl-parameters)
    6. [Private Registry Access](#private-registry-access)
-   7. [Enabling additional k3s Features](#enabling-additional-k3s-features)
+   7. [Configuring k3s Components](#configuring-k3s-components)
 3. [Maintenance](#maintenance)
    1. [Access Kubernetes API via Port-Forwarding from Gateway](#access-kubernetes-api-via-port-forwarding-from-gateway)
    2. [Ansible: Execute Commands on Nodes](#ansible-execute-commands-on-nodes)
@@ -399,11 +399,11 @@ variable "dockerio_access_token" {
 }
 ```
 
-### Enabling additional k3s Features
+### Configuring k3s Components
 
-terraform-hcloud-k3s provides a fully functional default configuration. Enabling additional features requires a comprehensive understanding of how k3s is configured and is an advanced use case! Features can be enabled as needed using the `k3s_features` variable:
+terraform-hcloud-k3s provides a fully functional default configuration. Configuring k3s components requires a comprehensive understanding of how k3s is configured and is an advanced use case! Components can be enabled as needed using the `k3s_config` variable:
 
-**Available Features:**
+**Available Components:**
 - **traefik**: Enable to use the built-in Traefik ingress controller
 - **servicelb**: Enable to use the built-in service load balancer, which is useful for simple load balancing scenarios
 - **local-storage**: Enable to use the nodes' local storage provider for Persistent Volumes in addition to the cloud storage provider
@@ -411,16 +411,16 @@ terraform-hcloud-k3s provides a fully functional default configuration. Enabling
 - **kube-proxy**: Is enabled by default, a custom configuration can be provided
 - **helm-controller**: Enable to install the built-in helm controller
 
-**Enabling Features:**
+**Enabling Components:**
 
-To enable features, configure the `k3s_features` variable in your `main.tf`:
+To enable components, configure the `k3s_config` variable in your `main.tf`:
 
 ```terraform
 module "cluster" {
   # ...
   
-  # Enable specific k3s features
-  k3s_features = {
+  # Configure k3s components
+  k3s_config = {
     # Enable Traefik as Ingress Controller
     traefik = {
       enabled = true
@@ -451,10 +451,10 @@ module "cluster" {
 ```
 
 **Notes:**
-- Most features are intentionally disabled to avoid conflicts with external solutions
+- Most components are intentionally disabled to avoid conflicts with external solutions
 - Traefik can be used as an alternative to external ingress controllers like NGINX
 - ServiceLB can be used for simple load balancing scenarios
-- Each feature can have custom configuration via the `custom_config` field
+- Each component can have custom configuration via the `custom_config` field
 - Verify compatibility with other cluster components before enabling
 
 ## Maintenance

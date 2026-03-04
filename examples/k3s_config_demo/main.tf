@@ -37,15 +37,15 @@ module "cluster" {
   k3s_channel       = "stable"
   k3s_version       = "v1.32.1+k3s1"
 
-  # k3s Features Configuration (New File-Based Configuration)
+  # k3s Config Configuration (New File-Based Configuration)
   # ------------------------------------------------
   # This demonstrates the new file-based configuration approach.
   # The module will create these configuration files:
   # - /etc/rancher/k3s/config.yaml.d/00-default.yaml (default config)
-  # - /etc/rancher/k3s/config.yaml.d/10-user.yaml (feature enables/disables)
+  # - /etc/rancher/k3s/config.yaml.d/10-user.yaml (component enables/disables)
   # - /etc/rancher/k3s/config.yaml.d/20-nodepool.yaml (node-pool specific)
-  # - /etc/rancher/k3s/config.yaml.d/10-{feature}-user.yaml (custom configs)
-  k3s_features = {
+  # - /etc/rancher/k3s/config.yaml.d/10-{component}-user.yaml (custom configs)
+  k3s_config = {
     traefik = {
       enabled = true
     }
@@ -159,7 +159,7 @@ output "total_monthly_costs" {
   value       = module.cluster.total_monthly_costs
 }
 
-output "k3s_features_status" {
-  description = "Demonstration of k3s_features status"
-  value       = module.cluster.k3s_features
+output "k3s_config_status" {
+  description = "Demonstration of k3s_config status"
+  value       = module.cluster.k3s_config
 }

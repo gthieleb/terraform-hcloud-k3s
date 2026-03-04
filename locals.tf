@@ -100,11 +100,11 @@ locals {
   export K3S_TOKEN="${random_string.k3s_token.result}"
   wget -qO- https://get.k3s.io | \
   EOT
-  # Process k3s features from input variable
-  k3s_features = var.k3s_features
+  # Process k3s config from input variable
+  k3s_config = var.k3s_config
 
-  # List of all supported k3s features (same as in validation)
-  k3s_supported_features = [
+  # List of all supported k3s components (same as in validation)
+  k3s_supported_components = [
     "kube-proxy",
     "helm-controller",
     "local-storage",
@@ -113,17 +113,17 @@ locals {
     "traefik"
   ]
 
-  # Generate disable flags for k3s features
-  # Disable all features that are either not configured OR configured with enabled = false
+  # Generate disable flags for k3s components
+  # Disable all components that are either not configured OR configured with enabled = false
   k3s_disable_flags = join(" ", [
-    for feature in local.k3s_supported_features : "--disable=${feature}"
-    if !lookup(local.k3s_features, feature, { enabled = false, custom_config = "" }).enabled
+    for component in local.k3s_supported_components : "--disable=${component}"
+    if !lookup(local.k3s_config, component, { enabled = false, custom_config = "" }).enabled
   ])
 
   # Generate custom config files for cloud-init
   k3s_custom_config_cloudinit = [
-    for feature, config in local.k3s_features : {
-      path        = "/etc/rancher/k3s/${feature}-config.yaml"
+    for component, config in local.k3s_config : {
+      path        = "/etc/rancher/k3s/${component}-config.yaml"
       content     = config.custom_config
       permissions = "0644"
     } if config.enabled && config.custom_config != ""

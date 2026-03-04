@@ -40,7 +40,7 @@ output "total_monthly_costs" {
   }
 }
 
-output "k3s_features" {
-  description = "Configured k3s features."
-  value       = var.k3s_features
+output "k3s_config" {
+  description = "Configured k3s components."
+  value       = var.k3s_config
 }

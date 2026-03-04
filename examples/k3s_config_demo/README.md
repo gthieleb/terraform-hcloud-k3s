@@ -1,13 +1,13 @@
-# k3s Features Demo
+# k3s Config Demo
 
 This example demonstrates the new file-based k3s configuration approach.
 
-## Features Demonstrated
+## Components Demonstrated
 
 1. **Traefik Ingress Controller** - Built-in ingress controller enabled
 2. **ServiceLB** - Simple load balancer enabled
 3. **Local Storage** - Nodes' local storage provider enabled
-4. **Custom kube-proxy Configuration** - Shows how to provide custom configuration for features
+4. **Custom kube-proxy Configuration** - Shows how to provide custom configuration for components
 
 ## Configuration Files Created
 
@@ -18,18 +18,18 @@ The module automatically creates the following configuration files:
   - Network settings, cloud provider, TLS SANs, etc.
 
 - `/etc/rancher/k3s/config.yaml.d/10-user.yaml`
-  - User-configurable features (enable/disable k3s components)
-  - Based on the `k3s_features` variable
+  - User-configurable components (enable/disable k3s components)
+  - Based on the `k3s_config` variable
 
 - `/etc/rancher/k3s/config.yaml.d/20-nodepool.yaml`
   - Node-pool specific configuration
   - Labels, taints, kube-apiserver args
 
-- `/etc/rancher/k3s/config.yaml.d/10-{feature}-user.yaml`
-  - Feature-specific custom configuration (optional)
+- `/etc/rancher/k3s/config.yaml.d/10-{component}-user.yaml`
+  - Component-specific custom configuration (optional)
   - In this example: kube-proxy custom config
 
-## Available Features
+## Available Components
 
 - **traefik**: Enable to use the built-in Traefik ingress controller
 - **servicelb**: Enable to use the built-in service load balancer
@@ -42,7 +42,7 @@ The module automatically creates the following configuration files:
 
 1. Copy this example:
    ```bash
-   cp -r examples/k3s_features_demo my-demo-cluster
+   cp -r examples/k3s_config_demo my-demo-cluster
    cd my-demo-cluster
    ```
 
@@ -95,8 +95,8 @@ This example uses the following resources:
 
 ## Notes
 
-- Most k3s features are intentionally disabled to avoid conflicts with external solutions
+- Most k3s components are intentionally disabled to avoid conflicts with external solutions
 - This example enables Traefik and ServiceLB, which may conflict with other ingress/load balancer solutions
 - The custom kube-proxy configuration demonstrates advanced usage
 - Changes to configuration files require a k3s restart to take effect
-- This is a demo setup - adjust resources and features for production use
+- This is a demo setup - adjust resources and components for production use
