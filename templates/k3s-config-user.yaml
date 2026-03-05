@@ -5,4 +5,5 @@
 
 # Components to disable (not enabled by user)
 # This list is generated from k3s_config variable
+disable:
 ${disable_components}
