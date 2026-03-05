@@ -339,10 +339,9 @@ variable "control_plane_k3s_additional_options" {
 }
 
 variable "k3s_config" {
-  description = "Configurable k3s components that can be enabled or disabled. Each component has an enabled flag and optional custom configuration content"
+  description = "Configurable k3s components that can be enabled or disabled. Each component has an enabled flag to control whether it should be active in the cluster."
   type = map(object({
-    enabled       = bool
-    custom_config = optional(string, "")
+    enabled = bool
   }))
   default = {}
   validation {

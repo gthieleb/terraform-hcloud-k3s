@@ -44,7 +44,6 @@ module "cluster" {
   # - /etc/rancher/k3s/config.yaml.d/00-default.yaml (default config)
   # - /etc/rancher/k3s/config.yaml.d/10-user.yaml (component enables/disables)
   # - /etc/rancher/k3s/config.yaml.d/20-nodepool.yaml (node-pool specific)
-  # - /etc/rancher/k3s/config.yaml.d/10-{component}-user.yaml (custom configs)
   k3s_config = {
     traefik = {
       enabled = true
@@ -54,13 +53,6 @@ module "cluster" {
     }
     "local-storage" = {
       enabled = true
-    }
-    "kube-proxy" = {
-      enabled       = true
-      custom_config = <<-EOF
-        mode: "iptables"
-        metricsBindAddress: "0.0.0.0:10249"
-      EOF
     }
   }
 

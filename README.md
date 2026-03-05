@@ -435,15 +435,6 @@ module "cluster" {
     "local-storage" = {
       enabled = true
     }
-    
-    # You can also provide custom configuration
-    "kube-proxy" = {
-      enabled = true
-      custom_config = <<-EOF
-        # Custom kube-proxy configuration
-        mode: "iptables"
-      EOF
-    }
   }
   
   # ...
@@ -454,7 +445,6 @@ module "cluster" {
 - Most components are intentionally disabled to avoid conflicts with external solutions
 - Traefik can be used as an alternative to external ingress controllers like NGINX
 - ServiceLB can be used for simple load balancing scenarios
-- Each component can have custom configuration via the `custom_config` field
 - Verify compatibility with other cluster components before enabling
 
 ## Maintenance

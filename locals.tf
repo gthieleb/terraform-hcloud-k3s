@@ -113,33 +113,44 @@ locals {
     "traefik"
   ]
 
-  # Generate disable flags for k3s components
+  # Generate list of disabled components for config file
   # Disable all components that are either not configured OR configured with enabled = false
-  k3s_disable_flags = join(" ", [
-    for component in local.k3s_supported_components : "--disable=${component}"
-    if !lookup(local.k3s_config, component, { enabled = false, custom_config = "" }).enabled
-  ])
-
-  # Generate custom config files for cloud-init
-  k3s_custom_config_cloudinit = [
-    for component, config in local.k3s_config : {
-      path        = "/etc/rancher/k3s/${component}-config.yaml"
-      content     = config.custom_config
-      permissions = "0644"
-    } if config.enabled && config.custom_config != ""
+  k3s_disabled_components = [
+    for component in local.k3s_supported_components : component
+    if !lookup(local.k3s_config, component, { enabled = false }).enabled
   ]
+
+  # Generate YAML content for user config file
+  k3s_user_config_content = length(local.k3s_disabled_components) > 0 ? templatefile("${path.module}/templates/k3s-config-user.yaml", {
+    disable_components = join("\n", [for c in local.k3s_disabled_components : "  - ${c}"])
+  }) : ""
+
+  # Generate config files for cloud-init
+  k3s_config_cloudinit = concat([
+    {
+      path = "/etc/rancher/k3s/config.yaml.d/00-default.yaml"
+      content = templatefile("${path.module}/templates/k3s-config-default.yaml", {
+        cluster_cidr = local.cluster_cidr_network
+        service_cidr = local.service_cidr_network
+      })
+      permissions = "0644"
+    }
+    ],
+    length(local.k3s_user_config_content) > 0 ? [
+      {
+        path        = "/etc/rancher/k3s/config.yaml.d/10-user.yaml"
+        content     = local.k3s_user_config_content
+        permissions = "0644"
+      }
+    ] : []
+  )
   common_arguments        = <<-EOT
   --node-external-ip="${local.cmd_node_external_ip}" \
   --kubelet-arg 'cloud-provider=external' \
   EOT
   control_plane_arguments = <<-EOT
   --tls-san="${hcloud_server_network.gateway.ip}" \
-  --flannel-backend=none \
-  ${local.k3s_disable_flags} \
   --egress-selector-mode disabled \
-  --cluster-cidr="${local.cluster_cidr_network}" \
-  --service-cidr="${local.service_cidr_network}" \
-  --embedded-registry \
   ${local.common_arguments~}
   EOT
   prices                  = jsondecode(data.http.prices.response_body).pricing

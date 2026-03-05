@@ -7,7 +7,6 @@ This example demonstrates the new file-based k3s configuration approach.
 1. **Traefik Ingress Controller** - Built-in ingress controller enabled
 2. **ServiceLB** - Simple load balancer enabled
 3. **Local Storage** - Nodes' local storage provider enabled
-4. **Custom kube-proxy Configuration** - Shows how to provide custom configuration for components
 
 ## Configuration Files Created
 
@@ -26,8 +25,7 @@ The module automatically creates the following configuration files:
   - Labels, taints, kube-apiserver args
 
 - `/etc/rancher/k3s/config.yaml.d/10-{component}-user.yaml`
-  - Component-specific custom configuration (optional)
-  - In this example: kube-proxy custom config
+  - Component-specific custom configuration (optional, not used in this example)
 
 ## Available Components
 

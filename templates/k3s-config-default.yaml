@@ -1,0 +1,20 @@
+# Default k3s configuration
+# Auto-generated file - do not modify manually
+# Copyright 2024, identinet GmbH. All rights reserved.
+# SPDX-License-Identifier: MIT
+
+# Network configuration
+flannel-backend: none
+cluster-cidr: ${cluster_cidr}
+service-cidr: ${service_cidr}
+egress-selector-mode: disabled
+
+# Embedded registry for image caching
+embedded-registry: true
+
+# Cloud provider configuration
+kubelet-arg:
+  - "cloud-provider=external"
+
+# Disable components that are managed externally
+# User-configurable components are defined in 10-user.yaml
