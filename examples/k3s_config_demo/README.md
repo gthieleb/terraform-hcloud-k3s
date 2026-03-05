@@ -79,7 +79,6 @@ ssh demo-admin@<node-ip>
 cat /etc/rancher/k3s/config.yaml.d/00-default.yaml
 cat /etc/rancher/k3s/config.yaml.d/10-user.yaml
 cat /etc/rancher/k3s/config.yaml.d/20-nodepool.yaml
-cat /etc/rancher/k3s/config.yaml.d/10-kube-proxy-user.yaml
 ```
 
 ## Cost Estimation
