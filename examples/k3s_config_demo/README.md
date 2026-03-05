@@ -88,10 +88,10 @@ cat /etc/rancher/k3s/config.yaml.d/10-kube-proxy-user.yaml
 
 This example uses the following resources:
 
-- Gateway: cpx11 (~€14.90/month)
-- Control Plane Nodes (3x cpx21): ~3 × €21.90 = €65.70/month
-- Worker Nodes (3x cpx21): ~3 × €21.90 = €65.70/month
-- **Total**: ~€146.30/month (excludes bandwidth and traffic)
+- Gateway: cpx11 (~€4.90/month)
+- Control Plane Nodes (3x cpx23): ~3 × €7.14/month = €21.42/month
+- Worker Nodes (3x cpx23): ~3 × €7.14/month = €21.42/month
+- **Total**: ~€47.74/month (excludes bandwidth and traffic)
 
 ## Notes
 
