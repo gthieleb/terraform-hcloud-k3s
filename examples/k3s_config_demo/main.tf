@@ -94,7 +94,7 @@ module "cluster" {
       }
       is_control_plane   = true
       schedule_workloads = false
-      type               = "cpx23"
+      type               = "cx23"
       count              = 3
       labels             = {}
       taints             = {}
@@ -102,7 +102,7 @@ module "cluster" {
     workers = {
       is_control_plane   = false
       schedule_workloads = true
-      type               = "cpx23"
+      type               = "cx23"
       count              = 3
       count_width        = 1
       labels             = {}
