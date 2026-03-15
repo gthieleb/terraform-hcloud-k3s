@@ -16,7 +16,7 @@ spec:
     service:
       annotations:
         load-balancer.hetzner.cloud/use-private-ip: "true"
-        load-balancer.hetzner.cloud/location: "nbg1"
+        load-balancer.hetzner.cloud/location: "hel1"
         load-balancer.hetzner.cloud/type: "lb11"
     ports:
       web:

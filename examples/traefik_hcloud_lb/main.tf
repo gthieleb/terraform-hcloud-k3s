@@ -28,7 +28,7 @@ module "cluster" {
   # ----------------
   delete_protection = true
   cluster_name      = "traefik-demo"
-  default_location  = "nbg1"
+  default_location  = "hel1"
   default_image     = "ubuntu-24.04"
   k3s_version       = "v1.32.1+k3s1"
 
@@ -56,7 +56,7 @@ module "cluster" {
   # Gateway Settings
   # ----------------
   gateway_firewall_k8s_open = false
-  gateway_server_type       = "cpx11"
+  gateway_server_type       = "cax11"
 
   # Control Plane Settings
   # ----------------------
@@ -74,7 +74,7 @@ module "cluster" {
       }
       is_control_plane   = true
       schedule_workloads = false
-      type               = "cpx33"
+      type               = "cax11"
       count              = 3
       labels             = {}
       taints             = {}
@@ -82,7 +82,7 @@ module "cluster" {
     workers = {
       is_control_plane   = false
       schedule_workloads = true
-      type               = "cpx33"
+      type               = "cax11"
       count              = 2
       count_width        = 2
       labels             = {}
