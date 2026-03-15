@@ -50,7 +50,7 @@ resource "hcloud_server" "pool" {
     package_update  = false
     package_upgrade = false
     runcmd          = count.index == 0 && length(var.runcmd_first) > 0 ? var.runcmd_first : var.runcmd
-    write_files = [
+    write_files = concat([
       {
         path        = "/usr/local/bin/check-cluster-readiness"
         content     = file("${path.module}/../templates/check-cluster-readiness")
@@ -95,7 +95,7 @@ resource "hcloud_server" "pool" {
         path    = "/etc/systemd/system/haproxy-k8s.timer"
         content = file("${path.module}/../templates/haproxy-k8s.timer")
       },
-    ]
+    ], var.k3s_custom_config_files)
     }),
     yamlencode(var.additional_cloud_init)
   )
@@ -298,6 +298,16 @@ variable "prices" {
 variable "is_control_plane" {
   description = "Does node pool contain control plane node?"
   type        = bool
+}
+
+variable "k3s_custom_config_files" {
+  description = "List of k3s custom configuration files to write."
+  type = list(object({
+    path        = string
+    content     = string
+    permissions = string
+  }))
+  default = []
 }
 
 output "location" {

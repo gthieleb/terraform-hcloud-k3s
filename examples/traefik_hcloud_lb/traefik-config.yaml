@@ -1,0 +1,27 @@
+# Traefik HelmChartConfig for Hetzner Cloud Load Balancer
+# -------------------------------------------------------
+# Apply after cluster creation: kubectl apply -f traefik-config.yaml
+#
+# Documentation:
+# - Traefik HelmChartConfig: https://docs.k3s.io/helm#using-a-helmchartconfig
+# - Hetzner Load Balancer Annotations: https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/main/docs/reference/load_balancer_annotations.md
+
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      annotations:
+        load-balancer.hetzner.cloud/use-private-ip: "true"
+        load-balancer.hetzner.cloud/location: "nbg1"
+        load-balancer.hetzner.cloud/type: "lb11"
+    ports:
+      web:
+        proxyProtocol:
+          enabled: true
+      websecure:
+        proxyProtocol:
+          enabled: true

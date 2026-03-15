@@ -100,28 +100,45 @@ locals {
   export K3S_TOKEN="${random_string.k3s_token.result}"
   wget -qO- https://get.k3s.io | \
   EOT
-  common_arguments                 = <<-EOT
+  k3s_supported_components = [
+    "kube-proxy",
+    "network-policy",
+    "helm-controller",
+    "local-storage",
+    "metrics-server",
+    "servicelb",
+    "traefik"
+  ]
+  k3s_disabled_components = [
+    for component in local.k3s_supported_components : component
+    if !lookup(var.k3s_config, component, { enabled = false }).enabled
+  ]
+  k3s_user_config_content = length(local.k3s_disabled_components) > 0 ? templatefile("${path.module}/templates/k3s-config-user.yaml", {
+    disable_components = join("\n", [for c in local.k3s_disabled_components : "  - ${c}"])
+  }) : ""
+  k3s_config_cloudinit = concat([
+    {
+      path        = "/etc/rancher/k3s/config.yaml.d/00-default.yaml"
+      content     = templatefile("${path.module}/templates/k3s-config-default.yaml", { cluster_cidr = local.cluster_cidr_network, service_cidr = local.service_cidr_network })
+      permissions = "0644"
+    }
+    ],
+    length(local.k3s_user_config_content) > 0 ? [
+      {
+        path        = "/etc/rancher/k3s/config.yaml.d/10-user.yaml"
+        content     = local.k3s_user_config_content
+        permissions = "0644"
+      }
+    ] : []
+  )
+  common_arguments        = <<-EOT
   --node-external-ip="${local.cmd_node_external_ip}" \
-  --kubelet-arg 'cloud-provider=external' \
   EOT
-  control_plane_arguments          = <<-EOT
+  control_plane_arguments = <<-EOT
   --tls-san="${hcloud_server_network.gateway.ip}" \
-  --flannel-backend=none \
-  --disable-kube-proxy \
-  --disable-network-policy \
-  --disable-cloud-controller \
-  --disable-helm-controller \
-  --egress-selector-mode disabled \
-  --cluster-cidr="${local.cluster_cidr_network}" \
-  --service-cidr="${local.service_cidr_network}" \
-  --embedded-registry \
-  --disable local-storage \
-  --disable metrics-server \
-  --disable servicelb \
-  --disable traefik \
   ${local.common_arguments~}
   EOT
-  prices                           = jsondecode(data.http.prices.response_body).pricing
+  prices                  = jsondecode(data.http.prices.response_body).pricing
   costs_gateway = [for server_type in local.prices.server_types :
     [for price in server_type.prices :
       { net = tonumber(price.price_monthly.net), gross = tonumber(price.price_monthly.gross) } if price.location == var.default_location

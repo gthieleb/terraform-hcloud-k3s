@@ -39,3 +39,8 @@ output "total_monthly_costs" {
     vat_rate = tonumber(local.prices.vat_rate)
   }
 }
+
+output "k3s_config" {
+  description = "Configured k3s components. NOTE: Only applied to newly created nodes. Existing nodes upgraded from previous module versions retain their CLI-based configuration."
+  value       = var.k3s_config
+}
