@@ -30,7 +30,7 @@ module "cluster" {
 
   # Cluster Settings
   # ----------------
-  delete_protection = true
+  delete_protection = false
   cluster_name      = "demo"
   default_location  = "nbg1"
   default_image     = "ubuntu-24.04"
