@@ -15,6 +15,8 @@ embedded-registry: true
 kubelet-arg:
   - "cloud-provider=external"
 
-# Permanently disabled components (conflict with external solutions)
+# Permanently disabled components (required for Cilium CNI)
 disable:
   - cloud-controller
+  - network-policy
+  - kube-proxy

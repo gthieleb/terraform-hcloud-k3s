@@ -72,8 +72,10 @@ The module creates these configuration files:
 
 | File | Purpose |
 |------|---------|
-| `/etc/rancher/k3s/config.yaml.d/00-default.yaml` | Module defaults (cluster-cidr, service-cidr, etc.) |
-| `/etc/rancher/k3s/config.yaml.d/10-user.yaml` | User-configurable component enables/disables |
+| `/etc/rancher/k3s/config.yaml.d/00-default.yaml` | Module defaults (cluster-cidr, service-cidr, disable cloud-controller, etc.) |
+| `/etc/rancher/k3s/config.yaml.d/10-user.yaml` | User-provided k3s configuration (any valid k3s options) |
+
+See [k3s configuration documentation](https://docs.k3s.io/installation/configuration#configuration-file) for all available options.
 
 ## Load Balancer Annotations
 

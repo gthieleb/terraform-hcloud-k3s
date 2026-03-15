@@ -41,6 +41,6 @@ output "total_monthly_costs" {
 }
 
 output "k3s_config" {
-  description = "Configured k3s components. NOTE: Only applied to newly created nodes. Existing nodes upgraded from previous module versions retain their CLI-based configuration."
+  description = "User-provided k3s configuration written to /etc/rancher/k3s/config.yaml.d/10-user.yaml"
   value       = var.k3s_config
 }

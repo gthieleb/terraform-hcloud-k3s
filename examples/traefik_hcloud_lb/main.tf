@@ -34,16 +34,17 @@ module "cluster" {
 
   # k3s Config - Enable Traefik and Helm Controller
   # -----------------------------------------------
-  # This enables the built-in Traefik ingress controller and Helm controller.
-  # The config files are written to /etc/rancher/k3s/config.yaml.d/
+  # Native k3s configuration written to /etc/rancher/k3s/config.yaml.d/10-user.yaml
+  # By default, this module disables traefik, servicelb, local-storage, metrics-server, helm-controller.
+  # To enable traefik and helm-controller, omit them from the disable list.
   # See: https://docs.k3s.io/installation/configuration#configuration-file
   k3s_config = {
-    traefik = {
-      enabled = true
-    }
-    helm-controller = {
-      enabled = true
-    }
+    disable = [
+      "servicelb",
+      "local-storage",
+      "metrics-server"
+    ]
+    # traefik and helm-controller NOT in list = enabled
   }
 
   # SSH Keys
@@ -73,7 +74,7 @@ module "cluster" {
       }
       is_control_plane   = true
       schedule_workloads = false
-      type               = "cpx31"
+      type               = "cpx33"
       count              = 3
       labels             = {}
       taints             = {}
@@ -81,7 +82,7 @@ module "cluster" {
     workers = {
       is_control_plane   = false
       schedule_workloads = true
-      type               = "cpx31"
+      type               = "cpx33"
       count              = 2
       count_width        = 2
       labels             = {}

@@ -100,22 +100,7 @@ locals {
   export K3S_TOKEN="${random_string.k3s_token.result}"
   wget -qO- https://get.k3s.io | \
   EOT
-  k3s_supported_components = [
-    "kube-proxy",
-    "network-policy",
-    "helm-controller",
-    "local-storage",
-    "metrics-server",
-    "servicelb",
-    "traefik"
-  ]
-  k3s_disabled_components = [
-    for component in local.k3s_supported_components : component
-    if !lookup(var.k3s_config, component, { enabled = false }).enabled
-  ]
-  k3s_user_config_content = length(local.k3s_disabled_components) > 0 ? templatefile("${path.module}/templates/k3s-config-user.yaml", {
-    disable_components = join("\n", [for c in local.k3s_disabled_components : "  - ${c}"])
-  }) : ""
+  k3s_user_config_content          = length(var.k3s_config) > 0 ? yamlencode(var.k3s_config) : ""
   k3s_config_cloudinit = concat([
     {
       path        = "/etc/rancher/k3s/config.yaml.d/00-default.yaml"

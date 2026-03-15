@@ -339,24 +339,16 @@ variable "control_plane_k3s_additional_options" {
 }
 
 variable "k3s_config" {
-  description = "Configurable k3s components that can be enabled or disabled. By default all components are disabled. See https://docs.k3s.io/installation/packaged-components"
-  type = map(object({
-    enabled = bool
-  }))
-  default = {}
-  validation {
-    condition = alltrue([
-      for component in keys(var.k3s_config) : contains([
-        "kube-proxy",
-        "network-policy",
-        "helm-controller",
-        "local-storage",
-        "metrics-server",
-        "servicelb",
-        "traefik"
-      ], component)
-    ])
-    error_message = "Unsupported k3s component specified. Supported components are: kube-proxy, network-policy, helm-controller, local-storage, metrics-server, servicelb, traefik"
+  description = "Full k3s configuration in native format. Written to /etc/rancher/k3s/config.yaml.d/10-user.yaml. See https://docs.k3s.io/installation/configuration"
+  type        = any
+  default = {
+    disable = [
+      "traefik",
+      "servicelb",
+      "local-storage",
+      "metrics-server",
+      "helm-controller"
+    ]
   }
 }
 
