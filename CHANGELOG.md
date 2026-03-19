@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [6.2.8] - 2026-03-19
+
+### Bug Fixes
+
+- [2a954a5](https://github.com/identiops/terraform-hcloud-k3s/commit/2a954a518c1e08016a876433c2f32012fa8fe94c) Use forgiving regex for Hetzner server type validation
+- [7b4d268](https://github.com/identiops/terraform-hcloud-k3s/commit/7b4d268af8da0053e3a16a0248682efad500bd19) Use 00- prefix for gateway-forwarding.network to override netplan
+- [67dcdeb](https://github.com/identiops/terraform-hcloud-k3s/commit/67dcdeb5389498a7c404e14a45618794a3ed71fc) Prioritize default route configuration in systemd-networkd
+
+### Miscellaneous Tasks
+
+- [04e12a2](https://github.com/identiops/terraform-hcloud-k3s/commit/04e12a25d8e0756f2ff627037fd1f7ffb963ac44) Update helm release hcloud-csi to v2.19.0
+- [ea001a4](https://github.com/identiops/terraform-hcloud-k3s/commit/ea001a40836b8e4ca412af9db29191942d8701cc) Update helm release hcloud-cloud-controller-manager to v1.30.0
+- [5f5aa5d](https://github.com/identiops/terraform-hcloud-k3s/commit/5f5aa5d05a8b809793c0e75e9b2f4c27d53a46c0) Update helm release cilium to v1.19.1
+- [570de6a](https://github.com/identiops/terraform-hcloud-k3s/commit/570de6ae1942ee242f26e771b8f8b2563d426fef) Update terraform local to ~> 2.7.0
+- [152a062](https://github.com/identiops/terraform-hcloud-k3s/commit/152a062e62af96be92ac9ba90fd6ce7ef88961fd) Update dependency nushell/nushell to v0.111.0
+- [98cccac](https://github.com/identiops/terraform-hcloud-k3s/commit/98cccac8f44b317dbc71ba382b3d46c7399ab0b4) Update helm release hcloud-csi to v2.20.0
+- [a82223b](https://github.com/identiops/terraform-hcloud-k3s/commit/a82223b22c3080377e319baf17f9286e8fc42b74) Update helm release hcloud-cloud-controller-manager to v1.30.1
+
 ## [6.2.7] - 2026-02-10
 
 ### Bug Fixes
