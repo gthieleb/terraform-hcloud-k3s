@@ -68,7 +68,7 @@ resource "hcloud_server" "gateway" {
         content = file("${path.module}/templates/haproxy-k8s.timer")
       },
       {
-        path    = "/etc/systemd/network/gateway-forwarding.network"
+        path    = "/etc/systemd/network/00-gateway-forwarding.network"
         content = templatefile("${path.module}/templates/gateway-forwarding.network", { network_interface = module.gateway_network_interface.network_interface })
       },
       {
