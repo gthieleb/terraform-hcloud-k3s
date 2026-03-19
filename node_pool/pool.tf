@@ -57,7 +57,7 @@ resource "hcloud_server" "pool" {
         permissions = "0755"
       },
       {
-        path = "/etc/systemd/network/default-route.network"
+        path = "/etc/systemd/network/00-default-route.network"
         content = templatefile("${path.module}/../templates/default-route.network",
           {
             default_gateway   = var.default_gateway
