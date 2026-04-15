@@ -368,6 +368,12 @@ EOT
   default     = {}
 }
 
+variable "k3s_features" {
+  description = "Compatibility shim for older examples and outputs that still reference feature status."
+  type        = any
+  default     = {}
+}
+
 # Node Pool Settings
 # ------------------
 

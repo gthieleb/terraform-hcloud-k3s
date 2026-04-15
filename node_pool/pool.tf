@@ -388,6 +388,16 @@ variable "kube_apiserver_args" {
   default     = {}
 }
 
+variable "k3s_custom_config_files" {
+  description = "Compatibility shim for older node pool cloud-init custom k3s config files."
+  type = list(object({
+    path        = string
+    content     = string
+    permissions = string
+  }))
+  default = []
+}
+
 output "location" {
   description = "Location of the node pool."
   value       = var.location
