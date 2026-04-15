@@ -12,7 +12,6 @@ locals {
   ]
   cluster_cidr_network = cidrsubnet(var.network_cidr, var.cluster_cidr_network_bits - 8, var.cluster_cidr_network_offset)
   service_cidr_network = cidrsubnet(var.network_cidr, var.service_cidr_network_bits - 8, var.service_cidr_network_offset)
-  # cmd_node_external_ip = "$(ip -4 -j a s dev eth0 | jq '.[0].addr_info[0].local' -r),$(ip -6 -j a s dev eth0 | jq '.[0].addr_info[0].local' -r)"
   cmd_node_external_ip = hcloud_server.gateway.ipv4_address
   kube-apiserver-args = var.oidc_enabled ? {
     oidc-username-claim = "email"
@@ -21,7 +20,18 @@ locals {
     oidc-client-id      = var.oidc_client_id
   } : {}
   default_gateway = cidrhost(var.network_cidr, 1)
-  haproxy_setup   = <<-EOT
+
+  k3s_config_default = {
+    cluster-cidr         = local.cluster_cidr_network
+    service-cidr         = local.service_cidr_network
+    embedded-registry    = true
+    kubelet-arg          = ["cloud-provider=external"]
+    disable              = ["local-storage", "metrics-server", "servicelb", "traefik", "helm-controller"]
+    flannel-backend      = "none"
+    egress-selector-mode = "disabled"
+  }
+
+  haproxy_setup  = <<-EOT
   export NU_VERSION="${var.nu_version}"
   # Detect architecture and set nu_arch variable
   arch=$(uname -m)
@@ -51,7 +61,7 @@ locals {
   systemctl enable --now haproxy-k8s.timer
   systemctl start haproxy-k8s
   EOT
-  security_setup  = <<-EOT
+  security_setup = <<-EOT
   set -eu
   # Remove hc-utils package due to the conflict it causes between dhcpd and systemd-networkd https://github.com/identiops/terraform-hcloud-k3s/issues/27
   dpkg -r hc-utils
@@ -98,51 +108,12 @@ locals {
   export INSTALL_K3S_CHANNEL="${var.k3s_channel}"
   export INSTALL_K3S_VERSION="${var.k3s_version}"
   export K3S_TOKEN="${random_string.k3s_token.result}"
+  mkdir -p /etc/rancher/k3s/config.yaml.d
   wget -qO- https://get.k3s.io | \
   EOT
-  # Process k3s features from input variable
-  k3s_features = var.k3s_features
-
-  # List of all supported k3s features (same as in validation)
-  k3s_supported_features = [
-    "kube-proxy",
-    "helm-controller",
-    "local-storage",
-    "metrics-server",
-    "servicelb",
-    "traefik"
-  ]
-
-  # Generate disable flags for k3s features
-  # Disable all features that are either not configured OR configured with enabled = false
-  k3s_disable_flags = join(" ", [
-    for feature in local.k3s_supported_features : "--disable=${feature}"
-    if !lookup(local.k3s_features, feature, { enabled = false, custom_config = "" }).enabled
-  ])
-
-  # Generate custom config files for cloud-init
-  k3s_custom_config_cloudinit = [
-    for feature, config in local.k3s_features : {
-      path        = "/etc/rancher/k3s/${feature}-config.yaml"
-      content     = config.custom_config
-      permissions = "0644"
-    } if config.enabled && config.custom_config != ""
-  ]
-  common_arguments        = <<-EOT
-  --node-external-ip="${local.cmd_node_external_ip}" \
-  --kubelet-arg 'cloud-provider=external' \
-  EOT
-  control_plane_arguments = <<-EOT
-  --tls-san="${hcloud_server_network.gateway.ip}" \
-  --flannel-backend=none \
-  ${local.k3s_disable_flags} \
-  --egress-selector-mode disabled \
-  --cluster-cidr="${local.cluster_cidr_network}" \
-  --service-cidr="${local.service_cidr_network}" \
-  --embedded-registry \
-  ${local.common_arguments~}
-  EOT
-  prices                  = jsondecode(data.http.prices.response_body).pricing
+  common_arguments                 = "--node-external-ip=\"${local.cmd_node_external_ip}\""
+  control_plane_arguments          = "--tls-san=\"${hcloud_server_network.gateway.ip}\""
+  prices                           = jsondecode(data.http.prices.response_body).pricing
   costs_gateway = [for server_type in local.prices.server_types :
     [for price in server_type.prices :
       { net = tonumber(price.price_monthly.net), gross = tonumber(price.price_monthly.gross) } if price.location == var.default_location

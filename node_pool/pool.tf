@@ -1,16 +1,6 @@
 # Copyright 2024, identinet GmbH. All rights reserved.
 # SPDX-License-Identifier: MIT
 
-
-resource local_sensitive_file cloudinit_debugfile {
-
-  count = var.debug_cloudinit ? var.node_count : 0
-
-  content = local.user_data_list[count.index]
-  filename = "${path.root}/cloudinit_debug_logs/${var.cluster_name}-${var.name}-${format("%0${var.node_count_width}d", count.index)}.yaml"
-
-}
-
 resource "hcloud_server" "pool" {
   depends_on = [hcloud_placement_group.pool]
 
@@ -36,7 +26,79 @@ resource "hcloud_server" "pool" {
   ssh_keys           = var.ssh_keys
   labels             = var.node_labels
   placement_group_id = hcloud_placement_group.pool.id
-  user_data = local.user_data_list[count.index]
+  user_data = format("%s\n%s\n%s", "#cloud-config", yamlencode({
+    # Documentation: https://cloudinit.readthedocs.io/en/latest/reference
+    # not sure if these settings are required here, now that the software installation is done later
+    # network = {
+    #   version = 1
+    #   config = [
+    #     {
+    #       type = "physical"
+    #       name = var.network_intreface
+    #       subnets = [
+    #         { type    = "dhcp"
+    #           gateway = var.default_gateway
+    #           dns_nameservers = [
+    #             "1.1.1.1",
+    #             "1.0.0.1",
+    #           ]
+    #         }
+    #       ]
+    #     },
+    #   ]
+    # }
+    package_update  = false
+    package_upgrade = false
+    runcmd          = count.index == 0 && length(var.runcmd_first) > 0 ? var.runcmd_first : var.runcmd
+    write_files = concat([
+      {
+        path        = "/usr/local/bin/check-cluster-readiness"
+        content     = file("${path.module}/../templates/check-cluster-readiness")
+        permissions = "0755"
+      },
+      {
+        path = "/etc/systemd/network/00-default-route.network"
+        content = templatefile("${path.module}/../templates/default-route.network",
+          {
+            default_gateway   = var.default_gateway
+            network_interface = var.network_interface
+        })
+      },
+      {
+        path        = "/etc/rancher/k3s/registries.yaml"
+        content     = yamlencode(var.registries)
+        permissions = "0600"
+      },
+      {
+        path    = "/etc/sysctl.d/90-kubelet.conf"
+        content = file("${path.module}/../templates/90-kubelet.conf")
+      },
+      {
+        path        = "/etc/sysctl.d/98-settings.conf"
+        content     = join("\n", formatlist("%s=%s", keys(var.sysctl_settings), values(var.sysctl_settings)))
+        permissions = "0644"
+      },
+      {
+        path = "/usr/local/bin/haproxy-k8s.nu"
+        content = templatefile("${path.module}/../templates/haproxy-k8s.nu", {
+          token = var.hcloud_token_read_only
+          host  = var.k8s_ha_host
+          port  = var.k8s_ha_port
+        })
+        permissions = "0700"
+      },
+      {
+        path    = "/etc/systemd/system/haproxy-k8s.service"
+        content = file("${path.module}/../templates/haproxy-k8s.service")
+      },
+      {
+        path    = "/etc/systemd/system/haproxy-k8s.timer"
+        content = file("${path.module}/../templates/haproxy-k8s.timer")
+      },
+    ], local.k3s_config_files)
+    }),
+    yamlencode(var.additional_cloud_init)
+  )
 
   firewall_ids = var.firewall_ids
 
@@ -69,6 +131,76 @@ locals {
       { net = tonumber(price.price_monthly.net), gross = tonumber(price.price_monthly.gross) } if price.location == var.location
     ][0] if server_type.name == var.node_type
   ][0]
+
+  k3s_server_only_keys = toset([
+    "cluster-cidr",
+    "service-cidr",
+    "disable",
+    "disable+",
+    "disable-cloud-controller",
+    "disable-kube-proxy",
+    "egress-selector-mode",
+    "embedded-registry",
+    "flannel-backend",
+    "kube-apiserver-arg",
+  ])
+
+  k3s_critical_keys = toset([
+    "disable-cloud-controller",
+    "disable-kube-proxy",
+    "flannel-backend",
+    "egress-selector-mode",
+  ])
+
+  k3s_config_user = {
+    for key, value in var.k3s_config : key => value
+    if !contains(local.k3s_critical_keys, key)
+  }
+
+  k3s_config_critical = {
+    "disable+"                 = ["cloud-controller", "network-policy", "kube-proxy"]
+    "disable-cloud-controller" = true
+    "disable-kube-proxy"       = true
+    "flannel-backend"          = "none"
+    "egress-selector-mode"     = "disabled"
+  }
+
+  k3s_config_agent_base = {
+    for key, value in merge(var.k3s_config_default, local.k3s_config_user) : key => value
+    if !contains(local.k3s_server_only_keys, key)
+  }
+
+  k3s_config_control_plane_default = merge(
+    var.k3s_config_default,
+    length(var.kube_apiserver_args) > 0 ? { kube-apiserver-arg = [for k, v in var.kube_apiserver_args : "${k}=${v}"] } : {}
+  )
+
+  k3s_config_files = var.is_control_plane ? concat([
+    {
+      path        = "/etc/rancher/k3s/config.yaml.d/00-default.yaml"
+      content     = yamlencode(local.k3s_config_control_plane_default)
+      permissions = "0644"
+    }
+    ], length(local.k3s_config_user) > 0 ? [
+    {
+      path        = "/etc/rancher/k3s/config.yaml.d/10-user.yaml"
+      content     = yamlencode(local.k3s_config_user)
+      permissions = "0644"
+    }
+    ] : [], [
+    {
+      path        = "/etc/rancher/k3s/config.yaml.d/99-critical.yaml"
+      content     = yamlencode(local.k3s_config_critical)
+      permissions = "0644"
+    }
+    ]) : [
+    {
+      path        = "/etc/rancher/k3s/config.yaml.d/00-default.yaml"
+      content     = yamlencode(local.k3s_config_agent_base)
+      permissions = "0644"
+    }
+  ]
+
 }
 
 variable "name" {
@@ -171,7 +303,7 @@ variable "node_type" {
   description = "Node type (size)."
   type        = string
   validation {
-    condition     = can(regex("^(cpx[1-6][1-2]|cx[2-5]3|cax[1-4]1|ccx[1-6]3)$", var.node_type))
+    condition     = can(regex("^(cpx|cx|cax|ccx)[0-9]+$", var.node_type))
     error_message = "Node type is not valid."
   }
 }
@@ -238,35 +370,37 @@ variable "is_control_plane" {
   type        = bool
 }
 
-variable "k3s_custom_config_files" {
-  description = "List of k3s custom configuration files to write."
-  type = list(object({
-    path        = string
-    content     = string
-    permissions = string
-  }))
-  default = []
+variable "k3s_config_default" {
+  description = "Default k3s configuration for the module."
+  type        = any
+  default     = {}
 }
 
-variable "debug_cloudinit" {
-  description = "If true, saves the generated cloud-init user_data to YAML files in the root module for debugging."
-  type        = bool
-  default     = false
+variable "k3s_config" {
+  description = "User-provided k3s configuration (merged with defaults)."
+  type        = any
+  default     = {}
+}
+
+variable "kube_apiserver_args" {
+  description = "Kube API server arguments for OIDC configuration."
+  type        = map(string)
+  default     = {}
 }
 
 output "location" {
-  description = "Node pool location."
+  description = "Location of the node pool."
   value       = var.location
 }
 
 output "node_count" {
-  description = "Number of nodes."
+  description = "Number of nodes in the pool."
   value       = var.node_count
 }
 
 output "labels" {
   description = "Node pool labels."
-  value       = { for k, v in var.node_labels : k => v }
+  value       = var.node_labels
 }
 
 output "type" {
@@ -301,4 +435,9 @@ output "costs" {
     net   = local.costs_node.net * var.node_count
     gross = local.costs_node.gross * var.node_count
   }
+}
+
+output "server_ids" {
+  description = "List of server IDs for this node pool."
+  value       = hcloud_server.pool[*].id
 }

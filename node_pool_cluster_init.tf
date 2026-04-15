@@ -38,9 +38,9 @@ module "node_pool_cluster_init" {
   is_control_plane       = each.value.any.is_control_plane
   k8s_ha_host            = local.k8s_ha_host
   k8s_ha_port            = local.k8s_ha_port
-  k3s_custom_config_files = local.k3s_custom_config_cloudinit
-
-  debug_cloudinit = var.debug_cloudinit
+  k3s_config_default     = local.k3s_config_default
+  k3s_config             = merge(var.k3s_config, each.value.any.k3s_config)
+  kube_apiserver_args    = local.kube-apiserver-args
 
   runcmd_first = (each.value.any.cluster_init_action.init || each.value.any.cluster_init_action.reset) ? concat([
     local.security_setup,
@@ -55,7 +55,7 @@ module "node_pool_cluster_init" {
       ${each.value.any.cluster_init_action.reset ? "--cluster-reset --cluster-reset-restore-path='${each.value.any.cluster_init_action.reset_restore_path}'" : ""} \
       ${local.control_plane_arguments~}
       ${!each.value.any.schedule_workloads ? "--node-taint CriticalAddonsOnly=true:NoExecute" : ""}  %{for k, v in each.value.any.taints} --node-taint "${k}:${v}" %{endfor}  \
-      ${var.control_plane_k3s_init_additional_options} ${var.control_plane_k3s_additional_options}  %{for key, value in merge(each.value.any.labels, each.value.any.is_control_plane ? { "control-plane" = "true" } : {})} --node-label=${key}=${value} %{endfor} %{for key, value in local.kube-apiserver-args} --kube-apiserver-arg=${key}=${value} %{endfor}
+      ${var.control_plane_k3s_init_additional_options} ${var.control_plane_k3s_additional_options}  %{for key, value in merge(each.value.any.labels, each.value.any.is_control_plane ? { "control-plane" = "true" } : {})} --node-label=${key}=${value} %{endfor}
       while ! test -d /var/lib/rancher/k3s/server/manifests; do
         echo "Waiting for '/var/lib/rancher/k3s/server/manifests'"
         sleep 1
@@ -68,14 +68,14 @@ module "node_pool_cluster_init" {
       ## See https://github.com/hetznercloud/hcloud-cloud-controller-manager
       kubectl -n kube-system create secret generic hcloud --from-literal='token=${var.hcloud_token}' --from-literal='network=${hcloud_network.private.id}'
       helm repo add hcloud https://charts.hetzner.cloud
-      helm install hcloud-ccm hcloud/hcloud-cloud-controller-manager -n kube-system --version '${var.hcloud_ccm_driver_chart_version}' --set 'networking.enabled=true,networking.clusterCIDR=${local.cluster_cidr_network},additionalTolerations[0].key=node.kubernetes.io/not-ready,additionalTolerations[0].effect=NoSchedule,clusterId=${var.cluster_name}'
+      helm install hcloud-ccm hcloud/hcloud-cloud-controller-manager -n kube-system --version '${var.hcloud_ccm_driver_chart_version}' --set 'networking.enabled=true,networking.clusterCIDR=${local.cluster_cidr_network},additionalTolerations[0].key=node.kubernetes.io/not-ready,additionalTolerations[0].effect=NoSchedule'
 
       ## See https://artifacthub.io/packages/helm/cilium/cilium
       helm repo add cilium https://helm.cilium.io/
       helm install cilium cilium/cilium -n kube-system --version '${var.cilium_version}' --set "masquerade=true,bpf.masquerade=true,endpointRoutes.enabled=true,k8s.requireIPv4PodCIDR=true,routingMode=native,ipv4NativeRoutingCIDR=${var.network_cidr},ipam.mode=kubernetes,ipam.operator.clusterPoolIPv4PodCIDRList=${local.cluster_cidr_network},operator.replicas=2,kubeProxyReplacement=true,nodePort.enabled=true,k8sServiceHost=${local.k8s_ha_host},k8sServicePort=${local.k8s_ha_port}"
 
       ## See https://github.com/hetznercloud/csi-driver
-      helm install hcloud-csi hcloud/hcloud-csi -n kube-system --version '${var.hcloud_csi_driver_chart_version}' --set 'storageClasses[0].name=hcloud-volumes-retain,storageClasses[0].defaultStorageClass=true,storageClasses[0].reclaimPolicy=Retain,storageClasses[1].name=hcloud-volumes-delete,storageClasses[1].defaultStorageClass=true,storageClasses[1].reclaimPolicy=Delete'
+      helm install hcloud-csi hcloud/hcloud-csi -n kube-system --version '${var.hcloud_csi_driver_chart_version}' --set 'storageClasses[0].name=hcloud-volumes-retain,storageClasses[0].defaultStorageClass=true,storageClasses[0].reclaimPolicy=Retain,storageClasses[1].name=hcloud-volumes-delete,storageClasses[1].defaultStorageClass=false,storageClasses[1].reclaimPolicy=Delete'
 
       ## See https://artifacthub.io/packages/helm/metrics-server/metrics-server
       helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
@@ -85,7 +85,7 @@ module "node_pool_cluster_init" {
       helm repo add kubereboot https://kubereboot.github.io/charts
       helm install -n kube-system kured kubereboot/kured --version '${var.kured_chart_version}' --set 'configuration.timeZone=${var.additional_cloud_init.timezone},configuration.startTime=${var.kured_start_time},configuration.endTime=${var.kured_end_time},configuration.rebootDays={${var.kured_reboot_days}},tolerations[0].key=CriticalAddonsOnly,tolerations[0].operator=Exists'
 
-      ## See https://github.com/rancher/charts/tree/release-v2.12/charts/system-upgrade-controller and https://github.com/rancher/system-upgrade-controller
+      ## See https://github.com/rancher/charts/tree/release-v2.15/charts/system-upgrade-controller and https://github.com/rancher/system-upgrade-controller
       kubectl apply -f https://github.com/rancher/system-upgrade-controller/releases/download/${var.system_upgrade_controller_app_version}/crd.yaml
       helm repo add rancher https://charts.rancher.io
       helm install --create-namespace -n cattle-system system-upgrade-controller rancher/system-upgrade-controller --version '${var.system_upgrade_controller_version}' --set 'systemUpgradeJobTTLSecondsAfterFinish=86400'
@@ -108,7 +108,7 @@ module "node_pool_cluster_init" {
       ${local.control_plane_arguments~}
       --node-ip="$(ip -4 -j a s dev ${each.value.network_interface} | jq '.[0].addr_info[0].local' -r)" \
       ${!each.value.any.schedule_workloads ? "--node-taint CriticalAddonsOnly=true:NoExecute" : ""}  %{for k, v in each.value.any.taints} --node-taint "${k}:${v}" %{endfor}  \
-      ${var.control_plane_k3s_additional_options}  %{for key, value in merge(each.value.any.labels, each.value.any.is_control_plane ? { "control-plane" = "true" } : {})} --node-label=${key}=${value} %{endfor} %{for key, value in local.kube-apiserver-args} --kube-apiserver-arg=${key}=${value} %{endfor}
+      ${var.control_plane_k3s_additional_options}  %{for key, value in merge(each.value.any.labels, each.value.any.is_control_plane ? { "control-plane" = "true" } : {})} --node-label=${key}=${value} %{endfor}
       EOT
     :
     <<-EOT

@@ -180,7 +180,7 @@ variable "cilium_version" {
   description = "Cilium version, see https://github.com/cilium/cilium"
   type        = string
   # renovate: datasource=helm registryUrl=https://helm.cilium.io/ packageName=cilium
-  default = "1.18.6"
+  default = "1.19.2"
 }
 
 variable "kured_chart_version" {
@@ -212,14 +212,14 @@ variable "hcloud_ccm_driver_chart_version" {
   description = "Hetzner CCM chart version, see https://github.com/hetznercloud/hcloud-cloud-controller-manager#versioning-policy"
   type        = string
   # renovate: datasource=helm registryUrl=https://charts.hetzner.cloud packageName=hcloud-cloud-controller-manager
-  default = "1.29.2"
+  default = "1.30.1"
 }
 
 variable "hcloud_csi_driver_chart_version" {
   description = "Hetzner CSI driver chart version, see https://github.com/hetznercloud/csi-driver/blob/main/docs/kubernetes/README.md#versioning-policy"
   type        = string
   # renovate: datasource=helm registryUrl=https://charts.hetzner.cloud packageName=hcloud-csi
-  default = "2.18.3"
+  default = "2.20.0"
 }
 
 variable "metrics_server_chart_version" {
@@ -230,10 +230,10 @@ variable "metrics_server_chart_version" {
 }
 
 variable "system_upgrade_controller_version" {
-  description = "System Upgarde Controller version, see available versions https://github.com/rancher/system-upgrade-controller and https://github.com/rancher/charts/tree/dev-v2.13/charts/system-upgrade-controller"
+  description = "System Upgarde Controller version, see available versions https://github.com/rancher/system-upgrade-controller and https://github.com/rancher/charts/tree/dev-v2.15/charts/system-upgrade-controller"
   type        = string
   # renovate: datasource=helm registryUrl=https://charts.rancher.io packageName=system-upgrade-controller
-  default = "108.0.0"
+  default = "109.0.0"
 }
 
 variable "system_upgrade_controller_app_version" {
@@ -247,7 +247,7 @@ variable "nu_version" {
   description = "NuShell version, see available version https://github.com/nushell/nushell/releases"
   type        = string
   # renovate: datasource=github-releases packageName=nushell/nushell
-  default = "0.110.0"
+  default = "0.111.0"
 }
 
 variable "additional_packages" {
@@ -306,7 +306,7 @@ variable "gateway_server_type" {
   default     = "cpx11"
   validation {
     # http get --headers [Authorization $"Bearer ($env.TF_VAR_hcloud_token)"] https://api.hetzner.cloud/v1/server_types | $in.server_types | each {{deprecated: $in.deprecated, name: $in.name, cores: $in.cores, cpu_type: $in.cpu_type, memory: $in.memory, disk: $in.disk, prices: ($in.prices.location | str join ', ')}}
-    condition     = can(regex("^(cpx[1-6][1-2]|cx[2-5]3|cax[1-4]1|ccx[1-6]3)$", var.gateway_server_type))
+    condition     = can(regex("^(cpx|cx|cax|ccx)[0-9]+$", var.gateway_server_type))
     error_message = "Node type is not valid."
   }
 }
@@ -338,26 +338,34 @@ variable "control_plane_k3s_additional_options" {
   default     = ""
 }
 
-variable "k3s_features" {
-  description = "Configurable k3s features that can be enabled or disabled. Each feature has an enabled flag and optional custom configuration content"
-  type = map(object({
-    enabled       = bool
-    custom_config = optional(string, "")
-  }))
-  default = {}
-  validation {
-    condition = alltrue([
-      for feature in keys(var.k3s_features) : contains([
-        "kube-proxy",
-        "helm-controller",
-        "local-storage",
-        "metrics-server",
-        "servicelb",
-        "traefik"
-      ], feature)
-    ])
-    error_message = "Unsupported k3s feature specified. Supported features are: kube-proxy, helm-controller, local-storage, metrics-server, servicelb, traefik"
-  }
+variable "k3s_config" {
+  description = <<EOT
+Global k3s configuration as YAML that will be written to /etc/rancher/k3s/config.yaml.d/10-user.yaml.
+This allows full use of k3s's value merge behavior including the `+` prefix for list appending.
+See https://docs.k3s.io/installation/configuration for available options.
+
+Example:
+```hcl
+k3s_config = {
+  disable = []  # Re-enable components from the default disable list
+  node-label = ["custom=label"]
+}
+```
+
+Note: the module always enforces critical settings in
+`/etc/rancher/k3s/config.yaml.d/99-critical.yaml`:
+- `disable+` appends `cloud-controller`, `network-policy`, and `kube-proxy`
+  to the effective disable list
+- `disable-cloud-controller: true`
+- `disable-kube-proxy: true`
+- `flannel-backend: none`
+- `egress-selector-mode: disabled`
+
+This keeps the cluster compatible with Cilium and the external Hetzner Cloud
+Controller Manager (HCCM), even if user config tries to override these values.
+EOT
+  type        = any
+  default     = {}
 }
 
 # Node Pool Settings
@@ -401,15 +409,17 @@ The value is an object with the following properties:
   can initialize the cluster. Exactly one node pool must set this variable to
   `true`.
 - `cluster_init_action`: defines the initialization action that shall be performed
-  - `init`, required for the first run of `terraform apply`. For later runs it
-     should be set to `false` to prevent any accidential reinitialization of the
-     cluster, e.g. when the first node of this pool is manually deleted via
-     the management console. Note: changes to this variable won't affect
-     existing nodes. So, if a reinitialization shall be performed, first delete
-     the node from the cluster and then run `terraform apply` again.
-  - `reset`: required for reinitializing the cluster to an older state.
-  - `reset_restore_path`: is the name or path to the etcd backup, see
-     https://docs.k3s.io/cli/etcd-snapshot?_highlight=reset
+   - `init`, required for the first run of `terraform apply`. For later runs it
+      should be set to `false` to prevent any accidential reinitialization of the
+      cluster, e.g. when the first node of this pool is manually deleted via
+      the management console. Note: changes to this variable won't affect
+      existing nodes. So, if a reinitialization shall be performed, first delete
+      the node from the cluster and then run `terraform apply` again.
+   - `reset`: required for reinitializing the cluster to an older state.
+   - `reset_restore_path`: is the name or path to the etcd backup, see
+      https://docs.k3s.io/cli/etcd-snapshot?_highlight=reset
+- `k3s_config`: optional k3s configuration that overrides the global `k3s_config`
+  variable for this node pool. See the `k3s_config` variable for details.
 
 Example:
 
@@ -467,7 +477,8 @@ EOT
     count              = number,
     count_width        = optional(number, 1),
     labels             = map(string),
-    taints             = map(string)
+    taints             = map(string),
+    k3s_config         = optional(any, {})
   }))
   default = {}
   validation {
@@ -504,7 +515,7 @@ EOT
   }
   validation {
     # http get --headers [Authorization $"Bearer ($env.TF_VAR_hcloud_token)"] https://api.hetzner.cloud/v1/server_types | $in.server_types | each {{deprecated: $in.deprecated, name: $in.name, cores: $in.cores, cpu_type: $in.cpu_type, memory: $in.memory, disk: $in.disk, prices: ($in.prices.location | str join ', ')}}
-    condition     = alltrue([for pool in var.node_pools : can(regex("^(cpx[1-6][1-2]|cx[2-5]3|cax[1-4]1|ccx[1-6]3)$", pool.type))])
+    condition     = alltrue([for pool in var.node_pools : can(regex("^(cpx|cx|cax|ccx)[0-9]+$", pool.type))])
     error_message = "Node `type` is not valid."
   }
 }
@@ -513,10 +524,4 @@ variable "worker_node_firewall_ids" {
   description = "A list of firewall IDs to apply on the worker node servers."
   type        = list(number)
   default     = []
-}
-
-variable "debug_cloudinit" {
-  description = "If true, saves the generated cloud-init user_data to YAML files in the root module for debugging."
-  type        = bool
-  default     = false
 }
